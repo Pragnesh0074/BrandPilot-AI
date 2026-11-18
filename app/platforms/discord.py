@@ -1,7 +1,7 @@
 """Discord Webhook integration (100% Free)."""
 
 import httpx
-from app.config import settings
+from app.config import Settings
 from app.platforms.base import BasePlatform
 from app.schemas.posting import PlatformPostResult
 
@@ -11,19 +11,22 @@ class DiscordPlatform(BasePlatform):
 
     def __init__(self):
         super().__init__(name="Discord", is_public=True)
-        self.webhook_url = settings.DISCORD_WEBHOOK_URL
+
+    @property
+    def webhook_url(self):
+        return Settings().DISCORD_WEBHOOK_URL
 
     async def post(self, message: str, cta_url: str) -> PlatformPostResult:
-        if not self.webhook_url:
-            if settings.POSTING_SIMULATION_MODE:
+        webhook_url = self.webhook_url
+        if not webhook_url:
+            if Settings().POSTING_SIMULATION_MODE:
                 return self.create_success_result(
                     posted_url="https://discord.com/channels/123456789012345678/987654321098765432/1122334455"
                 )
             return self.create_failed_result("Missing DISCORD_WEBHOOK_URL.")
 
         payload = {"content": message}
-        # ?wait=true returns the created message object containing the message ID
-        target_url = f"{self.webhook_url}?wait=true"
+        target_url = f"{webhook_url}?wait=true"
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
