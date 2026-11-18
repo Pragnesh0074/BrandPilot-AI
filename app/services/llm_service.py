@@ -8,6 +8,7 @@ import httpx
 
 from app.config import settings
 from app.services.website_extractor import ExtractedWebsiteData
+from app.services.competitor_service import CompetitorService
 from app.schemas.link_analysis import (
     BrandDetails,
     CompetitorAnalysis,
@@ -169,50 +170,20 @@ class FreeLocalAIEngine:
 
         return services[:5]
 
+    def __init__(self):
+        self.competitor_service = CompetitorService()
+
     def analyze(self, data: ExtractedWebsiteData) -> AnalysisContent:
         combined_text = f"{data.title} {data.meta_description} {data.meta_keywords} {' '.join(data.headings)} {data.body_text[:4000]}"
         industry_key = self._detect_industry(combined_text)
         industry_info = self.INDUSTRY_KNOWLEDGE[industry_key]
         brand_name = self._extract_brand_name(data)
 
-        # 1. Competitor Analysis
-        competitors = [
-            CompetitorItem(
-                brand_name=c[0],
-                main_service=c[1],
-                target_market=c[2],
-                strengths=c[3],
-                weaknesses_or_gaps=c[4],
-            )
-            for c in industry_info["competitors"]
-        ]
-
-        comp_analysis = CompetitorAnalysis(
-            brand_overview=(
-                f"{brand_name} is a dedicated provider in {industry_info['category']}, focusing on "
-                f"delivering targeted, customer-centric solutions. Their digital footprint indicates "
-                f"a strong emphasis on agility, value-oriented offerings, and responsive client engagement."
-            ),
-            competitors=competitors,
-            strengths=[
-                f"Agile execution and personalized client interaction compared to legacy incumbents.",
-                f"Specialized focus on modern methodologies and direct value delivery.",
-                f"Lean cost structure enabling competitive, flexible service pricing.",
-            ],
-            weaknesses=[
-                f"Brand search visibility and market recognition relative to mature legacy enterprises.",
-                f"Opportunity to publish more authoritative technical whitepapers and client case studies.",
-            ],
-            competitive_advantages=[
-                f"Tailored, high-touch support without bureaucratic enterprise ticketing delays.",
-                f"Faster deployment cycles and tailored customization for client-specific requirements.",
-                f"Direct access to core subject-matter experts rather than multi-layered account managers.",
-            ],
-            opportunities=[
-                f"Expand localized and vertical-specific digital search visibility.",
-                f"Establish social proof through customer testimonials, case studies, and transparent ROI benchmarks.",
-                f"Target unsatisfied mid-market clients transitioning away from expensive, inflexible market leaders.",
-            ],
+        # 1. Competitor Analysis (delegated to CompetitorService)
+        comp_analysis = self.competitor_service.generate_analysis(
+            brand_name=brand_name,
+            industry_key=industry_key,
+            category=industry_info["category"],
         )
 
         # 2. Top 5 Target Search Queries across Google, Facebook, Instagram, LinkedIn, X
